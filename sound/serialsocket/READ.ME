@@ -1,0 +1,25 @@
+Install Node.js: Download and install Node.js from nodejs.org.
+
+Create a project directory: Create a new directory for your project and navigate to it in your command prompt.
+"
+>mkdir arduino-websocket
+>cd arduino-websocket
+"
+Initialize a new Node.js project: Run the following command to initialize a new project.
+
+"
+>npm init -y
+>Install the required packages: Install the ws and serialport packages.
+
+
+"
+npm install ws serialport
+"
+
+Run the WebSocket server: Use the following command to run your server.
+
+"
+>node server.js
+"
+
+This setup should allow the Arduino to send signalStrength data over Serial, which is then relayed by a WebSocket server to your p5.js sketch on the client side. Make sure to update the COM port in the Node.js script to match your Arduino's COM port on your Windows PC.

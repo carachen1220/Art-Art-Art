@@ -163,6 +163,9 @@ void setup() {
 uint8_t refresh;
 
 void loop() {
+  //unsigned long currentMillis = millis(); // get timestamp of data for each channel
+  //int channels[CHANNELS]; // store channel's data
+
   for (uint8_t MHz = 0; MHz < CHANNELS; MHz++ ) { // tune to frequency (2400 + MHz) so this loop covers 2.400 - 2.527 GHz (maximum range module can handle) when channels is set to 128.
     NRF24L01_WriteReg(NRF24L01_05_RF_CH, MHz);
     CE_on; // start receiving
@@ -175,6 +178,7 @@ void loop() {
     }
     // Serial.print((signalStrength[MHz] + 0x0100) >> 9, HEX); // debugging without lcd display
     // Serial.print(" "); // debugging without lcd display
+   channels[MHz] = signalStrength[MHz];
 
     if (!--refresh) { // don't refresh whole display every scan (too slow)
       refresh = 19; // speed up by only refreshing every n-th frequency loop - reset number should be relatively prime to CHANNELS
@@ -193,8 +197,23 @@ void loop() {
         SSD1X06::displayByte(row, MHz, b);
       }
     }
+
   }
+  Serial.print("Timestamp: ");
+  Serial.print(currentMillis);
+  for (uint8_t i = 0; i < CHANNELS; i++) {
+    Serial.print(" Channel ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.print(channels[i]);
+    if (i < CHANNELS - 1) {
+      Serial.print(","); // 用逗号分隔信道数据
+    }
+  }
+  Serial.println(); // 在串口上打印新行表示一组信道数据的结束
+
   // Serial.print("\n"); // debugging without lcd display
+  
 }
 
 uint8_t _spi_write(uint8_t command)

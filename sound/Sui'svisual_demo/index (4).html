@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Sine Wave Visualization</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #canvas-container {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+        #playButton {
+            background-color: red;
+            color: white;
+        }
+        #clearButton {
+            background-color: grey;
+            color: white;
+        }
+        #animateButton {
+            background-color: blue;
+            color: white;
+        }
+        #visualButton {
+            background-color: purple;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div>
+        <button id="playButton">Play</button>
+        <button id="clearButton">Clear</button>
+        <button id="animateButton">Animate</button>
+        <button id="visualButton">Visual</button>
+    </div>
+
+    <!-- Load p5.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <!-- Load p5.sound.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
+
+    <!-- Load sketch350.js -->
+    <script src="sketch350.js"></script>
+</body>
+</html>

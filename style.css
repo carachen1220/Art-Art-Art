@@ -1,0 +1,148 @@
+body, html {
+    height: 100vh;
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: rgba(0, 0, 0, 0.8);
+    /* background-image: url('bg.gif'); */
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+#container-spec {
+    display: grid;
+    /* grid-template-columns: repeat(2, 50vw); */
+    grid-template-rows: repeat(10, 10vh);
+    grid-auto-rows: 10vh; 
+    justify-items: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+    position: relative;
+    z-index: 100;
+}
+#bottom-half{
+    justify-items: center;
+    align-items: center;
+    height: 20vh;
+    grid-row: 8/10;
+    display: grid;
+    grid-template-columns: repeat(5, 20vw);
+    grid-template-rows: repeat(2, 10vh);
+    grid-auto-rows: 10vh; 
+}
+
+/* #container-spec > * {
+    min-height: 10vh;
+    max-height: 10vh;
+} */
+#wave {
+    grid-row: 3/4;
+    border-radius: 5%;
+    width: 40%;
+    height: 100%; 
+    position: relative;
+    z-index: 101; 
+}
+#wave2 {
+    grid-row: 5/6;
+    border-radius: 5%;
+    width: 60%;
+    height: 100%; 
+    position: relative;
+    z-index: 101; 
+}
+
+#camera-container {
+    justify-items: center;
+    align-items: center;
+    grid-column: 2/3;
+    grid-row: 1/2;
+    width: 100px;
+    height: 100px;
+    position: relative;
+
+    z-index: 101; 
+}
+#camera {
+    /* grid-row: 4; */
+    width: 100px;
+    height: auto;
+    cursor: pointer;
+    position: relative;
+    z-index: 101; 
+}
+
+#camera:hover {
+    width: 80px;
+    height: auto;
+    transition: 0.3s;
+    filter: drop-shadow(0 0 8px gold);
+}
+
+#desc {
+    grid-row: 2/3;
+    grid-column: 2/3;
+    opacity: 0;
+    font-size: 36px;
+    font-weight: bold;
+    color: white;
+    position: relative;
+    z-index: 101; 
+}
+
+#RF {
+    grid-column: 4/5;
+    grid-row: 1/3;
+    /* grid-row: 4; */
+    /* width: 100px; */
+    height: auto;
+    /* cursor: pointer; */
+    position: relative;
+    z-index: 101; 
+}
+
+#camera-container:hover+#desc {
+    opacity: 1.0;
+}
+
+.light {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(0,0,0,0.8) 70%);
+    pointer-events: none; 
+    z-index: 99; 
+}
+
+.flash {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(0,0,0,0.8) 70%);
+    pointer-events: none; 
+    z-index: 103; 
+    opacity: 0;
+}
+
+@keyframes flash {
+    0% {
+        opacity: 0.2;
+    }
+    25% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 0.2;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.flash-effect {
+    animation: flash 0.5s ease;
+}

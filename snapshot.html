@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flip Image</title>
+    <link rel="stylesheet" href="snapshot.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+
+<body>
+
+    <div class="flip-container" id="flip-container">
+
+        <div class="flipper" id="flipper">
+
+            <div class="front">
+                <img src="HEAD.png" alt="Front Image" id="head">
+            </div>
+
+            <div class="back">
+                <img src="TAIL.png" alt="Back Image" id="tail">
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- <button id="save-button">Save</button> -->
+     <p id="rotate-desc">Drag to Rotate</p>
+
+
+    <div id="save-bar">
+        <!-- <label for="image-choice">Choose an image to save:</label> -->
+        <select id="image-choice">
+            <option value="head">Head</option>
+            <option value="tail">Tail</option>
+        </select>
+
+        <!-- <label for="format-choice">Choose format:</label> -->
+        <select id="format-choice">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="svg">SVG</option>
+        </select>
+
+        <button id="save-button">Save Image</button>
+    </div>
+
+
+
+
+    <script src="funcs.js"></script>
+</body>
+</html>

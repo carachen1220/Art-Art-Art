@@ -1,130 +1,163 @@
 
-// open Paintings page
-function openLink(){
-    const container = document.getElementById('container-spec');
-    const shutterSound = document.getElementById('shutterSound');
+let data;
 
-    // Play the shutter sound
-    shutterSound.play();
+function preload() {
+    // Load the CSV file with header
+    data = loadTable('../../../datafiles/DATA.CSV', 'csv', 'header');
+}
 
-    // Add flash effect class
-    container.classList.add('flash-effect');
+function setup() {
+    let canvas=createCanvas(800, 800);
+    noLoop();
 
-    // Remove the flash effect class after 0.5s
-    setTimeout(() => {
-        container.classList.remove('flash-effect');
-        // Open the new page after the effect
-        window.open('snapshot.html', '_blank', 'width=800,height=600,left=100,top=100');
-    }, 500);
+    // Select the row you want to visualize
+    let selectedRow = data.getRow(290);  // Change the index here to select a different row
+    let rowData = [];
+    for (let i = 1; i < selectedRow.arr.length; i++) {
+        rowData.push(parseInt(selectedRow.getString(i)));
+    }
+
+    // Use the selected row data to draw fields
+
+    drawFields(rowData);
+    canvas.parent("head");
+
+    // Save the canvas as an image file
+    // saveCanvas('farmFields', 'png');
+    
+
+}
+
+function drawFields(data) {
+    for (let i = 0; i < 128; i++) {
+        let num = data[i];
+        let size = ((num % 10) || 10) * 30 + 100;
+        size = constrain(size, 100, 400);
+        let sides = max(Math.floor((num % 100) / 10), 3);
+        let bezierDist = (Math.floor((num % 1000) / 100) || 1) * 15 + 50;
+        bezierDist = constrain(bezierDist, 50, 200);
+        let offset = (Math.floor(num / 1000) || 1) * 19 + 10;
+        offset = constrain(offset, 10, 200);
+
+        // Randomly position the fields within the canvas
+        let x = random(size / 2, width - size / 2);
+        let y = random(size / 2, height - size / 2);
+
+        drawField(x, y, size, sides, bezierDist, offset);
+    }
+}
+
+function drawField(x, y, size, sides, bezierDist, offset) {
+    let vertices = [];
+    let angleStep = TWO_PI / sides;
+
+    for (let angle = 0; angle < TWO_PI; angle += angleStep) {
+        // Randomize the radius for each vertex to create uneven edges
+        let radius = size / 2 * random(0.8, 1.2);
+        let vx = x + cos(angle) * radius;
+        let vy = y + sin(angle) * radius;
+        vertices.push(createVector(vx, vy));
+    }
+
+    // Draw the white-filled polygon first
+    fill(255);
+    noStroke();
+    beginShape();
+    for (let v of vertices) {
+        vertex(v.x, v.y);
+    }
+    endShape(CLOSE);
+
+    // Create a clipping mask for the field
+    let fieldMask = createGraphics(width, height);
+    fieldMask.fill(255);
+    fieldMask.noStroke();
+    fieldMask.beginShape();
+    for (let v of vertices) {
+        fieldMask.vertex(v.x, v.y);
+    }
+    fieldMask.endShape(CLOSE);
+
+    // Select a random boundary point on the polygon
+    let edgeIndex = floor(random(sides));
+    let nextEdgeIndex = (edgeIndex + 1) % sides;
+    let edgeStart = vertices[edgeIndex];
+    let edgeEnd = vertices[nextEdgeIndex];
+    let t = random(0.1, 0.9);
+    let boundaryPoint = p5.Vector.lerp(edgeStart, edgeEnd, t);
+
+    // Find the farthest point from the selected boundary point
+    let maxDist = 0;
+    let farthestPoint;
+    for (let v of vertices) {
+        let d = p5.Vector.dist(boundaryPoint, v);
+        if (d > maxDist) {
+            maxDist = d;
+            farthestPoint = v;
+        }
+    }
+
+    // Calculate a perpendicular vector to draw curves
+    let perpVector = createVector(-(farthestPoint.y - boundaryPoint.y), farthestPoint.x - boundaryPoint.x);
+    perpVector.setMag(maxDist);
+    let perpPoint1 = p5.Vector.add(farthestPoint, perpVector);
+    let perpPoint2 = p5.Vector.sub(farthestPoint, perpVector);
+
+    // Draw bezier curves inside the polygon
+    let curveGraphics = createGraphics(width, height);
+    drawBezierCurves(curveGraphics, boundaryPoint, perpPoint1, perpPoint2, bezierDist, offset);
+
+    // Apply the clipping mask to the curves
+    curveGraphics.loadPixels();
+    fieldMask.loadPixels();
+    for (let i = 0; i < curveGraphics.pixels.length; i += 4) {
+        if (fieldMask.pixels[i] == 0) {
+            curveGraphics.pixels[i + 3] = 0;  // Set transparency to 0 for areas outside the polygon
+        }
+    }
+    curveGraphics.updatePixels();
+
+    // Draw the bezier curves on the main canvas
+    image(curveGraphics, 0, 0);
+
+    // Draw the outline of the field
+    noFill();
+    stroke(0);
+    strokeWeight(1);
+    beginShape();
+    for (let v of vertices) {
+        vertex(v.x, v.y);
+    }
+    endShape(CLOSE);
+}
+
+function drawBezierCurves(pg, startPoint, endPoint1, endPoint2, bezierDist, offset) {
+    let numCurves = floor(random(10, 20));  // Number of curves to draw
+    let spacing = 1 / numCurves;
+
+    for (let i = 0; i < numCurves; i++) {
+        let t = lerp(0, 1, i * spacing + random(-spacing / 4, spacing / 4));
+        let endPoint = p5.Vector.lerp(endPoint1, endPoint2, t);
+
+        // Increase the control point offset to enhance curve curvature
+        let controlOffset1 = p5.Vector.random2D().mult(offset * 2);
+        let controlOffset2 = p5.Vector.random2D().mult(offset * 2);
+
+        pg.stroke(255, 0, 0);  // Draw with red color
+
+        pg.noFill();
+        pg.bezier(
+            startPoint.x, startPoint.y,
+            startPoint.x + controlOffset1.x, startPoint.y + controlOffset1.y,
+            endPoint.x + controlOffset2.x, endPoint.y + controlOffset2.y,
+            endPoint.x, endPoint.y
+        );
+    }
 }
 
 
 
 
 
-// drag to rotate
-document.getElementById('flip-container').addEventListener('click', function() {
-    var flipContainer = document.getElementById('flip-container');
-    flipContainer.classList.toggle('flipped');
-});
-
-let flipper = document.querySelector('.flipper');
-let isDragging = false;
-let startX;
-let initialRotation = 0;
-let currentRotation = 0;
-
-flipper.addEventListener('mousedown', function(e) {
-    e.preventDefault(); // Prevent default behavior
-    isDragging = true;
-    startX = e.clientX;
-    initialRotation = currentRotation; // Store current rotation angle
-    flipper.style.transition = 'none'; // Disable transition effects
-    flipper.style.cursor = 'grabbing';
-});
-
-document.addEventListener('mousemove', function(e) {
-    if (isDragging) {
-        let deltaX = e.clientX - startX;
-        let rotation = initialRotation + deltaX; // Rotate based on initial angle
-        flipper.style.transform = 'rotateY(' + rotation/5 + 'deg)';
-    }
-});
-
-document.addEventListener('mouseup', function(e) {
-    if (isDragging) {
-        isDragging = false;
-        flipper.style.transition = 'transform 1.5s'; // Restore transition effects
-        flipper.style.transform = 'rotateY(' + initialRotation/5 + 'deg)'; // Reset to initial angle
-        flipper.style.cursor = 'grab';
-    }
-});
-
-// Prevent default image dragging behavior
-flipper.querySelectorAll('img').forEach(img => {
-    img.addEventListener('dragstart', function(e) {
-        e.preventDefault();
-    });
-});
-
-
-
-// Save paintings
-document.getElementById('save-button').addEventListener('click', function() {
-    let imageChoice = document.getElementById('image-choice').value;
-    let formatChoice = document.getElementById('format-choice').value;
-    let imageElement = document.getElementById(imageChoice);
-
-    if (formatChoice === 'svg') {
-        // save svg img
-        let svgData = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="${imageElement.width}" height="${imageElement.height}">
-                <image href="${imageElement.src}" height="100%" width="100%"/>
-            </svg>
-        `;
-        let svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        let svgUrl = URL.createObjectURL(svgBlob);
-        let link = document.createElement('a');
-        link.href = svgUrl;
-        link.download = `${imageChoice}.svg`;
-        
-        document.body.appendChild(link); 
-        link.click(); 
-        document.body.removeChild(link); 
-        URL.revokeObjectURL(svgUrl);
-    } else {
-        // create a temporary img to make sure the img is fully loaded 
-        let tempImage = new Image();
-        tempImage.crossOrigin = "anonymous";
-        tempImage.src = imageElement.src;
-
-        tempImage.onload = function() {
-            let canvas = document.createElement('canvas');
-            canvas.width = tempImage.width;
-            canvas.height = tempImage.height;
-            let ctx = canvas.getContext('2d');
-
-            // plot paintings onto the canva
-            ctx.drawImage(tempImage, 0, 0, canvas.width, canvas.height);
-
-            // save paintings
-            canvas.toBlob(function(blob) {
-                let imageUrl = URL.createObjectURL(blob);
-                let link = document.createElement('a');
-                link.href = imageUrl;
-                link.download = `${imageChoice}.${formatChoice}`;
-                
-                document.body.appendChild(link); 
-                link.click(); 
-                document.body.removeChild(link); 
-                URL.revokeObjectURL(imageUrl);
-            }, `image/${formatChoice}`);
-        };
-
-        tempImage.onerror = function() {
-            console.error("Image could not be loaded for saving.");
-        };
-    }
-});
 
 

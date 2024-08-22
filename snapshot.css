@@ -13,8 +13,8 @@ body {
 
 .flipper {
     position: relative;
-    width: 500px;
-    height: 500px;
+    width: 800px;
+    height: 800px;
     transform-style: preserve-3d;
     transition: transform 0.6s;
     cursor: grab;
@@ -48,8 +48,8 @@ body {
     border-width: 3px;
     border-color: white;
     border-style: solid; */
-    height: 500px;
-    width: 500px;
+    height: 800px;
+    width: 800px;
     user-select: none; 
     -webkit-user-drag: none;
 }
@@ -58,8 +58,8 @@ body {
     border-width: 3px;
     border-color: white;
     border-style: solid; */
-    height: 500px;
-    width: 500px;
+    height: 800px;
+    width: 800px;
     user-select: none; 
     -webkit-user-drag: none;
 }

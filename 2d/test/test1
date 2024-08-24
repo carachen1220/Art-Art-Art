@@ -1,0 +1,87 @@
+
+// Mock p5.js functions and objects
+const p5Mock = {
+    createCanvas: jest.fn(),
+    loadTable: jest.fn(),
+    createGraphics: jest.fn(),
+    random: jest.fn(() => 0.5),
+    floor: Math.floor,
+    constrain: jest.fn((value, min, max) => Math.min(Math.max(value, min), max)),
+    TWO_PI: Math.PI * 2,
+    Vector: {
+        lerp: jest.fn(),
+        dist: jest.fn(),
+        add: jest.fn(),
+        sub: jest.fn(),
+        random2D: jest.fn(() => ({ mult: jest.fn() }))
+    }
+};
+
+// Mock window object
+const windowMock = {
+    ...p5Mock,
+    document: {
+        getElementById: jest.fn(() => ({
+            addEventListener: jest.fn()
+        }))
+    }
+};
+
+// Assign mocked objects to global scope
+Object.assign(global, windowMock);
+
+// Import your main script (you may need to adjust the path)
+// If your main script is using ES modules, you might need to use 'import' instead
+const mainScript = require('./your-main-script.js');
+
+describe('Farm Visualization Tests', () => {
+    beforeEach(() => {
+        // Reset mocks before each test
+        jest.clearAllMocks();
+    });
+
+    test('setup function creates canvas and loads data', () => {
+        mainScript.setup();
+        expect(p5Mock.createCanvas).toHaveBeenCalledWith(800, 800);
+        expect(p5Mock.loadTable).toHaveBeenCalled();
+    });
+
+    test('toggleView function changes isAscending', () => {
+        const initialIsAscending = mainScript.isAscending;
+        mainScript.toggleView();
+        expect(mainScript.isAscending).toBe(!initialIsAscending);
+    });
+
+    test('drawCurrentRow function processes data correctly', () => {
+        // Mock data
+        mainScript.data = {
+            getRow: jest.fn(() => ({
+                arr: [0, 1, 2, 3, 4],
+                getString: jest.fn((i) => i.toString())
+            })),
+            getRowCount: jest.fn(() => 5)
+        };
+
+        mainScript.drawCurrentRow();
+        expect(mainScript.data.getRow).toHaveBeenCalled();
+    });
+
+    test('drawFields function creates correct number of fields', () => {
+        const mockData = new Array(128).fill(100);
+        const drawFieldSpy = jest.spyOn(mainScript, 'drawField').mockImplementation(() => {});
+        
+        mainScript.drawFields(mockData);
+        expect(drawFieldSpy).toHaveBeenCalledTimes(128);
+    });
+
+    test('drawField function creates vertices and curves', () => {
+        const beginShapeSpy = jest.spyOn(p5Mock, 'beginShape');
+        const endShapeSpy = jest.spyOn(p5Mock, 'endShape');
+        const vertexSpy = jest.spyOn(p5Mock, 'vertex');
+
+        mainScript.drawField(400, 400, 200, 6, 100, 50);
+        expect(beginShapeSpy).toHaveBeenCalled();
+        expect(endShapeSpy).toHaveBeenCalled();
+        expect(vertexSpy).toHaveBeenCalled();
+    });
+});

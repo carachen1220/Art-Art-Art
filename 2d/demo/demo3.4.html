@@ -19,14 +19,6 @@
             margin: 10px;
             padding: 10px 20px;
             font-size: 16px;
-            background-color: red;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #toggleButton:hover {
-            background-color: darkred;
         }
     </style>
 </head>
@@ -40,6 +32,8 @@
         let currentRowIndex = 0;
         let totalRows;
         let isAscending = true;
+        let storedFields = [];
+        let originalOrder = [];
 
         function preload() {
             // Load the CSV file
@@ -51,7 +45,7 @@
             canvas.parent('canvasContainer');
             totalRows = data.getRowCount();
             noLoop(); // Stop draw from looping
-            drawCurrentRow(); // Initial draw
+            generateAndDrawFields(); // Initial generation and draw
 
             // Add event listener to the button
             document.getElementById('toggleButton').addEventListener('click', toggleView);
@@ -59,10 +53,10 @@
 
         function toggleView() {
             isAscending = !isAscending;
-            drawCurrentRow();
+            redrawFields();
         }
 
-        function drawCurrentRow() {
+        function generateAndDrawFields() {
             background(255);
 
             // Select the current row to visualize
@@ -72,19 +66,16 @@
                 rowData.push(parseInt(selectedRow.getString(i)));
             }
 
-            // Reverse the data if not ascending
-            if (!isAscending) {
-                rowData.reverse();
-            }
+            // Generate and store field data
+            storedFields = generateFields(rowData);
+            originalOrder = [...Array(storedFields.length).keys()];
 
-            // Use the selected row data to draw fields
-            drawFields(rowData);
-
-            // Move to the next row
-            currentRowIndex = (currentRowIndex + 1) % totalRows;
+            // Draw the fields
+            drawFields();
         }
 
-        function drawFields(data) {
+        function generateFields(data) {
+            let fields = [];
             for (let i = 0; i < 128; i++) {
                 let num = data[i];
                 let size = ((num % 10) || 10) * 30 + 100;
@@ -99,7 +90,22 @@
                 let x = random(size / 2, width - size / 2);
                 let y = random(size / 2, height - size / 2);
 
-                drawField(x, y, size, sides, bezierDist, offset);
+                fields.push({x, y, size, sides, bezierDist, offset});
+            }
+            return fields;
+        }
+
+        function redrawFields() {
+            background(255);
+            drawFields();
+
+        }
+
+        function drawFields() {
+            let order = isAscending ? originalOrder : [...originalOrder].reverse();
+            for (let i of order) {
+                let field = storedFields[i];
+                drawField(field.x, field.y, field.size, field.sides, field.bezierDist, field.offset);
             }
         }
 

@@ -19,27 +19,21 @@
             margin: 10px;
             padding: 10px 20px;
             font-size: 16px;
-            background-color: red;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #toggleButton:hover {
-            background-color: darkred;
         }
     </style>
 </head>
 
 <body>
-    <button id="toggleButton">Toggle View</button>
+    <button id="toggleButton">Toggle View (Front/Back)</button>
     <div id="canvasContainer"></div>
 
     <script>
         let data;
         let currentRowIndex = 0;
         let totalRows;
-        let isAscending = true;
+        let isFrontView = true;
+        let storedFields = [];
+        let originalOrder = [];
 
         function preload() {
             // Load the CSV file
@@ -51,18 +45,18 @@
             canvas.parent('canvasContainer');
             totalRows = data.getRowCount();
             noLoop(); // Stop draw from looping
-            drawCurrentRow(); // Initial draw
+            generateAndDrawFields(); // Initial generation and draw
 
             // Add event listener to the button
             document.getElementById('toggleButton').addEventListener('click', toggleView);
         }
 
         function toggleView() {
-            isAscending = !isAscending;
-            drawCurrentRow();
+            isFrontView = !isFrontView;
+            redrawFields();
         }
 
-        function drawCurrentRow() {
+        function generateAndDrawFields() {
             background(255);
 
             // Select the current row to visualize
@@ -72,19 +66,16 @@
                 rowData.push(parseInt(selectedRow.getString(i)));
             }
 
-            // Reverse the data if not ascending
-            if (!isAscending) {
-                rowData.reverse();
-            }
+            // Generate and store field data
+            storedFields = generateFields(rowData);
+            originalOrder = [...Array(storedFields.length).keys()];
 
-            // Use the selected row data to draw fields
-            drawFields(rowData);
-
-            // Move to the next row
-            currentRowIndex = (currentRowIndex + 1) % totalRows;
+            // Draw the fields
+            drawFields();
         }
 
-        function drawFields(data) {
+        function generateFields(data) {
+            let fields = [];
             for (let i = 0; i < 128; i++) {
                 let num = data[i];
                 let size = ((num % 10) || 10) * 30 + 100;
@@ -99,11 +90,18 @@
                 let x = random(size / 2, width - size / 2);
                 let y = random(size / 2, height - size / 2);
 
-                drawField(x, y, size, sides, bezierDist, offset);
+                // Generate and store vertices
+                let vertices = generateVertices(x, y, size, sides);
+
+                // Generate and store bezier curve data
+                let bezierData = generateBezierData(vertices, bezierDist, offset);
+
+                fields.push({x, y, size, sides, bezierDist, offset, vertices, bezierData});
             }
+            return fields;
         }
 
-        function drawField(x, y, size, sides, bezierDist, offset) {
+        function generateVertices(x, y, size, sides) {
             let vertices = [];
             let angleStep = TWO_PI / sides;
 
@@ -112,41 +110,28 @@
                 let radius = size / 2 * random(0.8, 1.2);
                 let vx = x + cos(angle) * radius;
                 let vy = y + sin(angle) * radius;
-                vertices.push(createVector(vx, vy));
+                vertices.push({x: vx, y: vy});
             }
+            return vertices;
+        }
 
-            // Draw the white-filled polygon first
-            fill(255);
-            noStroke();
-            beginShape();
-            for (let v of vertices) {
-                vertex(v.x, v.y);
-            }
-            endShape(CLOSE);
-
-            // Create a clipping mask for the field
-            let fieldMask = createGraphics(width, height);
-            fieldMask.fill(255);
-            fieldMask.noStroke();
-            fieldMask.beginShape();
-            for (let v of vertices) {
-                fieldMask.vertex(v.x, v.y);
-            }
-            fieldMask.endShape(CLOSE);
-
-            // Select a random boundary point on the polygon
+        function generateBezierData(vertices, bezierDist, offset) {
+            let sides = vertices.length;
             let edgeIndex = floor(random(sides));
             let nextEdgeIndex = (edgeIndex + 1) % sides;
             let edgeStart = vertices[edgeIndex];
             let edgeEnd = vertices[nextEdgeIndex];
             let t = random(0.1, 0.9);
-            let boundaryPoint = p5.Vector.lerp(edgeStart, edgeEnd, t);
+            let boundaryPoint = {
+                x: lerp(edgeStart.x, edgeEnd.x, t),
+                y: lerp(edgeStart.y, edgeEnd.y, t)
+            };
 
             // Find the farthest point from the selected boundary point
             let maxDist = 0;
             let farthestPoint;
             for (let v of vertices) {
-                let d = p5.Vector.dist(boundaryPoint, v);
+                let d = dist(boundaryPoint.x, boundaryPoint.y, v.x, v.y);
                 if (d > maxDist) {
                     maxDist = d;
                     farthestPoint = v;
@@ -156,12 +141,85 @@
             // Calculate a perpendicular vector to draw curves
             let perpVector = createVector(-(farthestPoint.y - boundaryPoint.y), farthestPoint.x - boundaryPoint.x);
             perpVector.setMag(maxDist);
-            let perpPoint1 = p5.Vector.add(farthestPoint, perpVector);
-            let perpPoint2 = p5.Vector.sub(farthestPoint, perpVector);
+            let perpPoint1 = {x: farthestPoint.x + perpVector.x, y: farthestPoint.y + perpVector.y};
+            let perpPoint2 = {x: farthestPoint.x - perpVector.x, y: farthestPoint.y - perpVector.y};
+
+            let numCurves = floor(random(10, 23));
+            let curves = [];
+
+            for (let i = 0; i < numCurves; i++) {
+                let t = lerp(0, 1, i / numCurves + random(-0.05, 0.05));
+                let endPoint = {
+                    x: lerp(perpPoint1.x, perpPoint2.x, t),
+                    y: lerp(perpPoint1.y, perpPoint2.y, t)
+                };
+
+                let controlOffset1 = p5.Vector.random2D().mult(offset * 3.8);
+                let controlOffset2 = p5.Vector.random2D().mult(offset * 3.8);
+
+                curves.push({
+                    start: boundaryPoint,
+                    control1: {x: boundaryPoint.x + controlOffset1.x, y: boundaryPoint.y + controlOffset1.y},
+                    control2: {x: endPoint.x + controlOffset2.x, y: endPoint.y + controlOffset2.y},
+                    end: endPoint
+                });
+            }
+
+            return {boundaryPoint, curves};
+        }
+
+        function redrawFields() {
+            background(255);
+            drawFields();
+        }
+
+        function drawFields() {
+            let order = isFrontView ? originalOrder : [...originalOrder].reverse();
+            for (let i of order) {
+                let field = storedFields[i];
+                drawField(field);
+            }
+        }
+
+        function drawField(field) {
+            push();
+            if (!isFrontView) {
+                // Apply horizontal flip for back view
+                translate(width, 0);
+                scale(-1, 1);
+            }
+
+            // Draw the white-filled polygon first
+            fill(255);
+            noStroke();
+            beginShape();
+            for (let v of field.vertices) {
+                vertex(v.x, v.y);
+            }
+            endShape(CLOSE);
+
+            // Create a clipping mask for the field
+            let fieldMask = createGraphics(width, height);
+            fieldMask.fill(255);
+            fieldMask.noStroke();
+            fieldMask.beginShape();
+            for (let v of field.vertices) {
+                fieldMask.vertex(v.x, v.y);
+            }
+            fieldMask.endShape(CLOSE);
 
             // Draw bezier curves inside the polygon
             let curveGraphics = createGraphics(width, height);
-            drawBezierCurves(curveGraphics, boundaryPoint, perpPoint1, perpPoint2, bezierDist, offset);
+            for (let curve of field.bezierData.curves) {
+                curveGraphics.stroke(255, 0, 0);  // Draw with red color
+                curveGraphics.noFill();
+                curveGraphics.bezier(
+                    curve.start.x, curve.start.y,
+                    curve.control1.x, curve.control1.y,
+                    curve.control2.x, curve.control2.y,
+                    curve.end.x, curve.end.y
+                );
+            }
 
             // Apply the clipping mask to the curves
             curveGraphics.loadPixels();
@@ -181,34 +239,12 @@
             stroke(0);
             strokeWeight(1);
             beginShape();
-            for (let v of vertices) {
+            for (let v of field.vertices) {
                 vertex(v.x, v.y);
             }
             endShape(CLOSE);
-        }
 
-        function drawBezierCurves(pg, startPoint, endPoint1, endPoint2, bezierDist, offset) {
-            let numCurves = floor(random(10, 20));  // Number of curves to draw
-            let spacing = 1 / numCurves;
-
-            for (let i = 0; i < numCurves; i++) {
-                let t = lerp(0, 1, i * spacing + random(-spacing / 4, spacing / 4));
-                let endPoint = p5.Vector.lerp(endPoint1, endPoint2, t);
-
-                // Increase the control point offset to enhance curve curvature
-                let controlOffset1 = p5.Vector.random2D().mult(offset * 2);
-                let controlOffset2 = p5.Vector.random2D().mult(offset * 2);
-
-                pg.stroke(255, 0, 0);  // Draw with red color
-
-                pg.noFill();
-                pg.bezier(
-                    startPoint.x, startPoint.y,
-                    startPoint.x + controlOffset1.x, startPoint.y + controlOffset1.y,
-                    endPoint.x + controlOffset2.x, endPoint.y + controlOffset2.y,
-                    endPoint.x, endPoint.y
-                );
-            }
+            pop();
         }
     </script>
 </body>

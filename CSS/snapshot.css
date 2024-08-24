@@ -53,16 +53,15 @@ body {
     user-select: none; 
     -webkit-user-drag: none;
 }
-#tail{
-    /* border-radius: 2px;
-    border-width: 3px;
-    border-color: white;
-    border-style: solid; */
+
+/* for now there's no tail */
+/* #tail{
+
     height: 800px;
     width: 800px;
     user-select: none; 
     -webkit-user-drag: none;
-}
+} */
 
 /* button {
     margin-top: 20px;

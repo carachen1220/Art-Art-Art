@@ -144,7 +144,7 @@
             let perpPoint1 = {x: farthestPoint.x + perpVector.x, y: farthestPoint.y + perpVector.y};
             let perpPoint2 = {x: farthestPoint.x - perpVector.x, y: farthestPoint.y - perpVector.y};
 
-            let numCurves = floor(random(10, 20));
+            let numCurves = floor(random(10, 23));
             let curves = [];
 
             for (let i = 0; i < numCurves; i++) {
@@ -154,8 +154,8 @@
                     y: lerp(perpPoint1.y, perpPoint2.y, t)
                 };
 
-                let controlOffset1 = p5.Vector.random2D().mult(offset * 2);
-                let controlOffset2 = p5.Vector.random2D().mult(offset * 2);
+                let controlOffset1 = p5.Vector.random2D().mult(offset * 3.8);
+                let controlOffset2 = p5.Vector.random2D().mult(offset * 3.8);
 
                 curves.push({
                     start: boundaryPoint,

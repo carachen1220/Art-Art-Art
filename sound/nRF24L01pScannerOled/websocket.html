@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2.4 GHz Band Scanner Data</title>
+</head>
+<body>
+    <h1>2.4 GHz Band Scanner Data</h1>
+    <div id="data-display"></div>
+
+    <script>
+const SerialPort = require('serialport');
+const Readline = require('@serialport/parser-readline');
+
+
+const port = new SerialPort.SerialPort('COM9', {  
+  baudRate: 115200
+});
+
+
+        socket.addEventListener('open', (event) => {
+            console.log('WebSocket connection opened');
+        });
+
+  
+        socket.addEventListener('message', (event) => {
+            console.log('Data received from server:', event.data);
+
+          
+            const receivedData = JSON.parse(event.data);
+
+           
+            const dataDisplay = document.getElementById('data-display');
+
+            dataDisplay.innerHTML = '';
+            const timestampElement = document.createElement('p');
+            timestampElement.textContent = `Timestamp: ${receivedData.timestamp}`;
+            dataDisplay.appendChild(timestampElement);
+
+            
+            receivedData.channels.forEach((strength, index) => {
+                const channelElement = document.createElement('p');
+                channelElement.textContent = `Channel ${index}: ${strength}`;
+                dataDisplay.appendChild(channelElement);
+            });
+        });
+
+      
+        socket.addEventListener('close', (event) => {
+            console.log('WebSocket connection closed');
+        });
+
+        socket.addEventListener('error', (event) => {
+            console.error('WebSocket error:', event);
+        });
+    </script>
+</body>
+</html>

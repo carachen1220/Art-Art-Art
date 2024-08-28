@@ -141,7 +141,7 @@ void setup() {
   NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00); // switch off Shockburst mode
   NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, 0x0F); // write default value to setup register
   NRF24L01_SetTxRxMode(RX_EN); // switch to receive mode
-  Serial.begin(115200); // debugging without lcd display
+  Serial.begin(9600); // debugging without lcd display
 
   
   for (int x = 0; x < 128; x++) {
@@ -157,28 +157,43 @@ void setup() {
   SSD1X06::displayString6x8(7, 0, F("2.41"), 0);
   SSD1X06::displayString6x8(7, 50, F("2.46"), 0);
   SSD1X06::displayString6x8(7, 100, F("2.51"), 0);
-  delay(1500); // start up message
+  // delay(1500); // start up message
+  Serial.print("New test");
 }
 
 uint8_t refresh;
 
 void loop() {
-  //unsigned long currentMillis = millis(); // get timestamp of data for each channel
-  //int channels[CHANNELS]; // store channel's data
+  for (uint8_t MHz = 0; MHz < CHANNELS; MHz++ ) {
 
-  for (uint8_t MHz = 0; MHz < CHANNELS; MHz++ ) { // tune to frequency (2400 + MHz) so this loop covers 2.400 - 2.527 GHz (maximum range module can handle) when channels is set to 128.
+    unsigned long timestamp = millis();
+    Serial.print("Timestamp: ");
+    Serial.print(timestamp);
+    
+    
+    
+    
+     // tune to frequency (2400 + MHz) so this loop covers 2.400 - 2.527 GHz (maximum range module can handle) when channels is set to 128.
     NRF24L01_WriteReg(NRF24L01_05_RF_CH, MHz);
     CE_on; // start receiving
     delayMicroseconds(random(130, 230)); // allow receiver time to tune and start receiving 130 uS seems to be the minimum time.  Random additional delay helps prevent strobing effects with frequency-hopping transmitters.
     CE_off; // stop receiving - one bit is now set if received power was > -64 dBm at that instant
     if (NRF24L01_ReadReg(NRF24L01_09_CD)) { // signal detected so increase signalStrength unless already maxed out
+      // Serial.print("Signal detected at ");
+      // Serial.print(2400 + MHz);
+      // Serial.println(" MHz");
       signalStrength[MHz] += (0x7FFF - signalStrength[MHz]) >> 5; // increase rapidly when previous value was low, with increase reducing exponentially as value approaches maximum
     } else { // no signal detected so reduce signalStrength unless already at minimum
       signalStrength[MHz] -= signalStrength[MHz] >> 5; // decrease rapidly when previous value was high, with decrease reducing exponentially as value approaches zero
     }
     // Serial.print((signalStrength[MHz] + 0x0100) >> 9, HEX); // debugging without lcd display
     // Serial.print(" "); // debugging without lcd display
-    channels[MHz] = signalStrength[MHz];
+
+    Serial.print(", Channel ");
+    Serial.print(MHz);
+    Serial.print(": ");
+    Serial.print(signalStrength[MHz]);
+
 
     if (!--refresh) { // don't refresh whole display every scan (too slow)
       refresh = 19; // speed up by only refreshing every n-th frequency loop - reset number should be relatively prime to CHANNELS
@@ -197,23 +212,8 @@ void loop() {
         SSD1X06::displayByte(row, MHz, b);
       }
     }
-
   }
-  Serial.print("Timestamp: ");
-  Serial.print(currentMillis);
-  for (uint8_t i = 0; i < CHANNELS; i++) {
-    Serial.print(" Channel ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.print(channels[i]);
-    if (i < CHANNELS - 1) {
-      Serial.print(","); // 用逗号分隔信道数据
-    }
-  }
-  Serial.println(); // 在串口上打印新行表示一组信道数据的结束
-
-  // Serial.print("\n"); // debugging without lcd display
-  
+  Serial.print("\n"); // debugging without lcd display
 }
 
 uint8_t _spi_write(uint8_t command)
@@ -370,4 +370,3 @@ uint8_t NRF24L01_Reset()
     NRF24L01_SetTxRxMode(TXRX_OFF);
     return (status1 == status2 && (status1 & 0x0f) == 0x0e);
 }
-

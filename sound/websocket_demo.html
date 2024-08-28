@@ -8,50 +8,54 @@
 </head>
 <body>
     <h1>2.4 GHz Band Scanner Data</h1>
-    <div id="data-display"></div>
-
-
+    <!-- create a div for data -->
+    <div id="data-display"></div> 
 
     <script>
-        // Create a new WebSocket connection to the server
+        // create socket and connect
         const socket = new WebSocket('ws://localhost:8080');
-
-        socket.addEventListener('open', (event) => {
+    
+        // test
+        socket.addEventListener('open', function (event) {
             console.log('WebSocket connection opened');
         });
-
-        socket.addEventListener('message', (event) => {
+    
+        
+        socket.addEventListener('message', function (event) {
             console.log('Data received from server:', event.data);
-
-            // Parse the received data from the server
+    
+            // compile data as json file
             const receivedData = JSON.parse(event.data);
-
-            // Display the data in the HTML
+    
+            
             const dataDisplay = document.getElementById('data-display');
-
-            // Clear previous data
+    
+            // clear the previous daata
             dataDisplay.innerHTML = '';
-
-            // Display the timestamp
+    
+            // timestamp
             const timestampElement = document.createElement('p');
             timestampElement.textContent = `Timestamp: ${receivedData.timestamp}`;
             dataDisplay.appendChild(timestampElement);
-
-            // Display the channel data
+    
+            // strength of each channel
             receivedData.channels.forEach((strength, index) => {
                 const channelElement = document.createElement('p');
                 channelElement.textContent = `Channel ${index}: ${strength}`;
                 dataDisplay.appendChild(channelElement);
             });
         });
-
-        socket.addEventListener('close', (event) => {
+    
+        // test
+        socket.addEventListener('close', function (event) {
             console.log('WebSocket connection closed');
         });
-
-        socket.addEventListener('error', (event) => {
+    
+        // test
+        socket.addEventListener('error', function (event) {
             console.error('WebSocket error:', event);
         });
     </script>
+    
 </body>
 </html>

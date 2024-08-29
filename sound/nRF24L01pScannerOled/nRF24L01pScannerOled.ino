@@ -141,7 +141,7 @@ void setup() {
   NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00); // switch off Shockburst mode
   NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, 0x0F); // write default value to setup register
   NRF24L01_SetTxRxMode(RX_EN); // switch to receive mode
-  Serial.begin(9600); // debugging without lcd display
+  // Serial.begin(115200); // debugging without lcd display
 
   
   for (int x = 0; x < 128; x++) {
@@ -157,18 +157,18 @@ void setup() {
   SSD1X06::displayString6x8(7, 0, F("2.41"), 0);
   SSD1X06::displayString6x8(7, 50, F("2.46"), 0);
   SSD1X06::displayString6x8(7, 100, F("2.51"), 0);
-  // delay(1500); // start up message
-  Serial.print("New test");
+  delay(1500); // start up message
 }
 
 uint8_t refresh;
 
 void loop() {
-  for (uint8_t MHz = 0; MHz < CHANNELS; MHz++ ) {
-
-    unsigned long timestamp = millis();
+      unsigned long timestamp = millis();
     Serial.print("Timestamp: ");
     Serial.print(timestamp);
+  for (uint8_t MHz = 0; MHz < CHANNELS; MHz++ ) {
+
+
     
     
     

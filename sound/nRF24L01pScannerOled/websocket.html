@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2.4 GHz Band Scanner Data</title>
+</head>
+<body>
+    <h1>2.4 GHz Band Scanner Data</h1>
+    <div id="data-display"></div>
+
+
+
+    <script>
+        // Create a new WebSocket connection to the server
+        const socket = new WebSocket('ws://localhost:8080');
+
+        socket.addEventListener('open', (event) => {
+            console.log('WebSocket connection opened');
+        });
+
+        socket.addEventListener('message', (event) => {
+            console.log('Data received from server:', event.data);
+
+            // Parse the received data from the server
+            const receivedData = JSON.parse(event.data);
+
+            // Display the data in the HTML
+            const dataDisplay = document.getElementById('data-display');
+
+            // Clear previous data
+            dataDisplay.innerHTML = '';
+
+            // Display the timestamp
+            const timestampElement = document.createElement('p');
+            timestampElement.textContent = `Timestamp: ${receivedData.timestamp}`;
+            dataDisplay.appendChild(timestampElement);
+
+            // Display the channel data
+            receivedData.channels.forEach((strength, index) => {
+                const channelElement = document.createElement('p');
+                channelElement.textContent = `Channel ${index}: ${strength}`;
+                dataDisplay.appendChild(channelElement);
+            });
+        });
+
+        socket.addEventListener('close', (event) => {
+            console.log('WebSocket connection closed');
+        });
+
+        socket.addEventListener('error', (event) => {
+            console.error('WebSocket error:', event);
+        });
+    </script>
+</body>
+</html>

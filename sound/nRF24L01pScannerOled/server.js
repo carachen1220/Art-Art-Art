@@ -30,8 +30,6 @@ wss.on('connection', (ws) => {
 
 console.log('WebSocket server is running on ws://localhost:8080');
 
-
-
 function parseArduinoData(data) {
   const result = { channels: [] };
   const parts = data.split(', ');  
@@ -47,4 +45,3 @@ function parseArduinoData(data) {
   });
   return result;
 }
-

@@ -1,9 +1,11 @@
+// Import required modules
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 const http = require('http');
 const url = require('url');
 const axios = require('axios');
 
+// Define IP addresses for ESP32 devices
 const ESP32_IPS = [
   '192.168.0.118',
   '192.168.0.174',
@@ -11,8 +13,10 @@ const ESP32_IPS = [
   '192.168.0.142'
 ];
 
+// Define HTTP port for ESP32 communication
 const ESP32_PORT = 21324;
 
+// Define effect codes for different LED patterns
 const EFFECTS = {
   'LIGHTNING': 57,
   'DANCING_SHADOW': 58,
@@ -23,6 +27,7 @@ const EFFECTS = {
   'CRAZY_BEES': 119
 };
 
+// Map IP addresses to groups of effects
 const IP_EFFECT_GROUPS = {
   '192.168.0.118': [
     [EFFECTS.LIGHTNING, EFFECTS.DANCING_SHADOW],
@@ -42,6 +47,7 @@ const IP_EFFECT_GROUPS = {
   ]
 };
 
+// Function to select a random effect for a given IP
 function selectRandomEffect(ip) {
   const effectGroups = IP_EFFECT_GROUPS[ip];
   const randomGroupIndex = Math.floor(Math.random() * effectGroups.length);
@@ -55,18 +61,22 @@ function selectRandomEffect(ip) {
   }
 }
 
+// Set up serial port communication with Arduino
 const port = new SerialPort({
   path: '/dev/cu.usbserial-A5069RR4',
   baudRate: 9600
 });
 
+// Create a parser for Arduino data
 const arduinoParser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
+// Handle incoming data from Arduino
 arduinoParser.on('data', (data) => {
   const parsedData = parseArduinoData(data);
   sendToESP32s(parsedData);
 });
 
+// Parse incoming data from Arduino
 function parseArduinoData(data) {
   const result = { channels: [] };
   const parts = data.split(', ');
@@ -83,12 +93,14 @@ function parseArduinoData(data) {
   return result;
 }
 
+// Process and send data to ESP32 devices
 function sendToESP32s(parsedData) {
   if (parsedData.channels.length < 128) {
     console.error('Not enough channel data');
     return;
   }
 
+  // Calculate averages for groups of 5 channels
   let averages = [];
   for (let i = 0; i < 24; i++) {
     let sum = 0;
@@ -98,6 +110,7 @@ function sendToESP32s(parsedData) {
     averages[i] = sum / 5;
   }
 
+  // Apply mappings and normalize data
   const mappedData = applyMappings(averages);
   const normalizedData = normalizeData(mappedData);
   const commands = prepareCommands(normalizedData);
@@ -105,6 +118,7 @@ function sendToESP32s(parsedData) {
   sendCommandsHttp(commands);
 }
 
+// Apply non-linear mapping to data
 function applyMappings(averages) {
   const minValue = Math.min(...averages);
   const maxValue = Math.max(...averages);
@@ -119,6 +133,7 @@ function applyMappings(averages) {
   });
 }
 
+// Normalize and enhance contrast of data
 function normalizeData(mappedData) {
   const minValue = Math.min(...mappedData);
   const maxValue = Math.max(...mappedData);
@@ -132,17 +147,20 @@ function normalizeData(mappedData) {
   });
 }
 
+// Utility function to clamp a value between min and max
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+// Calculate duration based on the change rate of normalized data
 function calculateDuration(normalizedData) {
-  // 计算持续时间，基于数据的变化程度
+  // Calculate duration based on the degree of data change
   const changeRate = Math.max(...normalizedData) - Math.min(...normalizedData);
-  // 将持续时间限制在 1 到 10 秒之间
+  // Limit the duration between 400ms and 1000ms
   return Math.round(clamp(changeRate * 10, 400, 1000));
 }
 
+// Prepare commands for each ESP32 device
 function prepareCommands(normalizedData) {
   const duration = calculateDuration(normalizedData);
 
@@ -151,10 +169,12 @@ function prepareCommands(normalizedData) {
     const minValue = 50;
     const brightness = Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255));
 
+    // Enhance RGB sensitivity and ensure minimum value
     const r = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 1] * 1.5), 0, 255));
     const g = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 2] * 1.5), 0, 255));
     const b = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 3] * 1.5), 0, 255));
 
+    // Ensure minimum values for sx and ix
     const sx = Math.max(minValue, clamp(normalizedData[baseIndex + 4], 0, 255));
     const ix = Math.max(minValue, clamp(normalizedData[baseIndex + 5], 0, 255));
 
@@ -165,7 +185,7 @@ function prepareCommands(normalizedData) {
       command: {
         on: true,
         bri: brightness,
-        tt: duration,  // 添加持续时间参数
+        tt: duration,  // Add duration parameter
         seg: [
           {
             col: [[r, g, b]],
@@ -179,6 +199,7 @@ function prepareCommands(normalizedData) {
   });
 }
 
+// Send commands to ESP32 devices using HTTP
 async function sendCommandsHttp(commands) {
   for (let i = 0; i < ESP32_IPS.length; i++) {
     const ip = ESP32_IPS[i];
@@ -195,6 +216,7 @@ async function sendCommandsHttp(commands) {
   }
 }
 
+// Create HTTP server for receiving control commands
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
 
@@ -225,6 +247,7 @@ const server = http.createServer((req, res) => {
   }
 });
 
+// Start the HTTP server
 const HTTP_PORT = 3000;
 server.listen(HTTP_PORT, () => {
   console.log(`HTTP server running on port ${HTTP_PORT}`);

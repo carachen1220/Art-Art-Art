@@ -216,12 +216,14 @@ void setup() {
 }
 
 uint8_t refresh;
+int previousNote[CHANNELS];  
+int previousVelocity[CHANNELS];
 
 void loop() {
 
       unsigned long timestamp = millis();
-    Serial.print("Timestamp: ");
-    Serial.print(timestamp);
+    // Serial.print("Timestamp: ");
+    // Serial.print(timestamp);
   for (uint8_t MHz = 0; MHz < CHANNELS; MHz++ ) { \
 
 
@@ -245,10 +247,10 @@ void loop() {
     // Serial.print((signalStrength[MHz] + 0x0100) >> 9, HEX); // debugging without lcd display
     // Serial.print(" "); // debugging without lcd display
 
-    Serial.print(", Channel ");
-    Serial.print(MHz);
-    Serial.print(": ");
-    Serial.print(signalStrength[MHz]);
+    // Serial.print(", Channel ");
+    // Serial.print(MHz);
+    // Serial.print(": ");
+    // Serial.print(signalStrength[MHz]);
 
 
     if (!--refresh) { // don't refresh whole display every scan (too slow)
@@ -277,20 +279,39 @@ void loop() {
       }
     }
 
-
-    midiNoteOn(0,MHz,signalStrength[MHz]*127/maxSignal);
+    // the maximum value that can show on the oled board is (48px*128-0x0040(64)=6080)
+    // midiNoteOn(0,MHz,signalStrength[MHz]*128/6080);
+    // midiNoteOn(0,MHz,signalStrength[MHz]*127/maxSignal);
     // midiSetChannelVolume(MHz, 95+0.25*signalStrength[MHz]*127/maxSignal);
     midiSetChannelVolume(MHz, 127);
     // midiSetChannelVolume(MHz, signalStrength[MHz]*127/maxSignal);
     // delay(2000);
     // midiNoteOff(0, MHz, signalStrength[MHz]%128);
 
+    // int velocity = signalStrength[MHz] * 128 / 6080;
+
+    // 3008 is the edge of blue and yellow
+
+    int velocity;
+    if (signalStrength[MHz] > 3008) {
+            velocity = 128;  // over 3008 use max velocity
+        } else {
+            velocity = signalStrength[MHz] * 128 / 3008;  // scale 
+        }
+
+   if (previousVelocity[MHz] != velocity) {
+           
+            midiNoteOnGradual(0, MHz, previousVelocity[MHz], velocity);
+
+          
+            previousVelocity[MHz] = velocity;
+        }
 
   }
   Serial.print("\n"); // debugging without lcd display
 
 
-  midiAllNotesOff(0);
+  // midiAllNotesOff(0);
 
   // MIDI loop end
 
@@ -505,6 +526,28 @@ void midiNoteOn(uint8_t chan, uint8_t n, uint8_t vel) {
   VS1053_MIDI.write(MIDI_NOTE_ON | chan);
   VS1053_MIDI.write(n);
   VS1053_MIDI.write(vel);
+}
+
+void midiNoteOnGradual(uint8_t chan, uint8_t n, uint8_t currentVel, uint8_t targetVel) {
+    if (chan > 15) return;
+    if (n > 127) return;
+    if (targetVel > 127) return;
+
+      if (currentVel < targetVel) {
+        while (currentVel < targetVel) {
+            midiNoteOn(chan, n, currentVel); 
+            currentVel++; 
+            delay(5); 
+        }
+    }
+
+    else if (currentVel > targetVel) {
+        while (currentVel > targetVel) {
+            midiNoteOn(chan, n, currentVel); 
+            currentVel--;  
+            delay(5); 
+        }
+    }
 }
 
 void midiNoteOff(uint8_t chan, uint8_t n, uint8_t vel) {

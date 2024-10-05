@@ -3,15 +3,16 @@ import csv from 'csv-parser';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
+// Set up __filename and __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Configuration constants
 const WLED_IP = "http://172.20.10.7";
 const CSV_FILE_PATH = '../../datafiles/DATA.CSV';
 const ROWS_TO_PROCESS = 370;
 
-
-// 定义WLED效果ID（与之前相同）
+// Define WLED effect IDs
 const EFFECTS = {
     SOLID: 0,
     BLINK: 1,
@@ -22,18 +23,20 @@ const EFFECTS = {
     DUAL_SCAN: 6,
     FLASH: 7,
     RAINBOW: 8,
-    // ... 添加更多效果
+    // ... add more effects as needed
 };
 
+// Normalize data to a specified range (default 0-255)
 function normalizeData(data, min = 0, max = 255) {
     const dataMin = Math.min(...data);
     const dataMax = Math.max(...data);
     return data.map(x => Math.round((x - dataMin) / (dataMax - dataMin) * (max - min) + min));
 }
 
+// Map normalized data to WLED segments
 function mapDataToWLED(data) {
     const normalizedData = normalizeData(data);
-    const segmentCount = 4; // 将LED分为4段
+    const segmentCount = 4; // Divide LEDs into 4 segments
     const dataPerSegment = Math.floor(normalizedData.length / segmentCount);
 
     const segments = [];
@@ -55,7 +58,7 @@ function mapDataToWLED(data) {
     return segments;
 }
 
-// 映射函数（与之前相同）
+// Mapping functions for various WLED parameters
 function mapValueToEffect(value) {
     if (value < 50) return EFFECTS.BREATHE;
     if (value < 100) return EFFECTS.SCAN;
@@ -65,15 +68,15 @@ function mapValueToEffect(value) {
 }
 
 function mapValueToSpeed(value) {
-    return Math.round(value / 2); // 速度范围 0-127
+    return Math.round(value / 2); // Speed range 0-127
 }
 
 function mapValueToIntensity(value) {
-    return value; // 强度范围 0-255
+    return value; // Intensity range 0-255
 }
 
 function mapValueToPalette(value) {
-    return Math.floor(value / 16); // 假设有16种色板可选
+    return Math.floor(value / 16); // Assuming 16 palettes available
 }
 
 function mapValueToColor(value) {
@@ -86,8 +89,8 @@ function mapValueToSecondaryColor(value) {
     return hsvToRgb(hue, 100, 100);
 }
 
+// Convert HSV to RGB
 function hsvToRgb(h, s, v) {
-    // HSV到RGB转换函数（与之前相同）
     let r, g, b;
     const i = Math.floor(h / 60);
     const f = h / 60 - i;
@@ -107,6 +110,7 @@ function hsvToRgb(h, s, v) {
     return [Math.round(r * 2.55), Math.round(g * 2.55), Math.round(b * 2.55)];
 }
 
+// Send visualization data to WLED device
 function visualizeData(timestamp, data) {
     const segments = mapDataToWLED(data);
 
@@ -133,14 +137,15 @@ function visualizeData(timestamp, data) {
     .catch(error => console.error('Error sending data:', error));
 }
 
+// Process CSV data
 function processCSVData() {
     const results = [];
-    fs.createReadStream(CSV_FILE_PATH)
+    createReadStream(CSV_FILE_PATH)
         .pipe(csv())
         .on('data', (data) => {
             results.push(data);
             if (results.length === ROWS_TO_PROCESS) {
-                // 停止读取更多行
+                // Stop reading more rows
                 this.pause();
             }
         })
@@ -150,15 +155,16 @@ function processCSVData() {
         });
 }
 
+// Process and visualize results
 function processResults(results) {
     results.forEach((row, index) => {
         setTimeout(() => {
-            const timestamp = row.timestamp; // 假设CSV有一个timestamp列
-            const channelData = Object.values(row).slice(1).map(Number); // 忽略timestamp，转换其余数据为数字
+            const timestamp = row.timestamp; // Assuming CSV has a timestamp column
+            const channelData = Object.values(row).slice(1).map(Number); // Ignore timestamp, convert remaining data to numbers
             visualizeData(timestamp, channelData);
-        }, index * 1000); // 每秒处理一行
+        }, index * 1000); // Process one row per second
     });
 }
 
-// 开始处理CSV数据
+// Start processing CSV data
 processCSVData();

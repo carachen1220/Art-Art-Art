@@ -11,6 +11,7 @@ const ESP32_IPS = [
   '192.168.0.142'
 ];
 
+
 const ESP32_PORT = 21324;
 
 const EFFECTS = {

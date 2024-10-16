@@ -19,6 +19,14 @@
             margin: 10px;
             padding: 10px 20px;
             font-size: 16px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #toggleButton:hover {
+            background-color: darkred;
         }
     </style>
 </head>
@@ -75,31 +83,30 @@
         }
 
         function generateFields(data) {
-            let fields = [];
-            for (let i = 0; i < 128; i++) {
-                let num = data[i];
-                let size = ((num % 10) || 10) * 30 + 100;
-                size = constrain(size, 100, 400);
-                let sides = max(Math.floor((num % 100) / 10), 3);
-                let bezierDist = (Math.floor((num % 1000) / 100) || 1) * 15 + 50;
-                bezierDist = constrain(bezierDist, 50, 200);
-                let offset = (Math.floor(num / 1000) || 1) * 19 + 10;
-                offset = constrain(offset, 10, 200);
+    let fields = [];
+    for (let i = 0; i < 128; i++) {
+        let num = data[i];
+        let size = ((num % 10) || 10) * 30 + 100;
+        size = constrain(size, 100, 400);
+        let sides = max(Math.floor((num % 100) / 10), 3);
+        let bezierDist = (Math.floor((num % 1000) / 100) || 1) * 15 + 50;
+        bezierDist = constrain(bezierDist, 50, 200);
+        let offset = (Math.floor(num / 1000) || 1) * 19 + 10;
+        offset = constrain(offset, 10, 200);
 
-                // Randomly position the fields within the canvas
-                let x = random(size / 2, width - size / 2);
-                let y = random(size / 2, height - size / 2);
+        // 修改这里：扩大随机位置的范围，使fields可能超出画布
+        let x = random(-size, width + size);
+        let y = random(-size, height + size);
+        // 生成和存储顶点
+        let vertices = generateVertices(x, y, size, sides);
 
-                // Generate and store vertices
-                let vertices = generateVertices(x, y, size, sides);
+        // 生成和存储贝塞尔曲线数据
+        let bezierData = generateBezierData(vertices, bezierDist, offset);
 
-                // Generate and store bezier curve data
-                let bezierData = generateBezierData(vertices, bezierDist, offset);
-
-                fields.push({x, y, size, sides, bezierDist, offset, vertices, bezierData});
-            }
-            return fields;
-        }
+        fields.push({x, y, size, sides, bezierDist, offset, vertices, bezierData});
+    }
+    return fields;
+}
 
         function generateVertices(x, y, size, sides) {
             let vertices = [];
@@ -174,78 +181,93 @@
         }
 
         function drawFields() {
-            let order = isFrontView ? originalOrder : [...originalOrder].reverse();
-            for (let i of order) {
-                let field = storedFields[i];
-                drawField(field);
-            }
+    let order = isFrontView ? originalOrder : [...originalOrder].reverse();
+    for (let i of order) {
+        let field = storedFields[i];
+        // 检查field是否至少部分在画布内
+        if (isFieldVisible(field)) {
+            drawField(field);
         }
+    }
+}
 
-        function drawField(field) {
-            push();
-            if (!isFrontView) {
-                // Apply horizontal flip for back view
-                translate(width, 0);
-                scale(-1, 1);
-            }
-
-            // Draw the white-filled polygon first
-            fill(255);
-            noStroke();
-            beginShape();
-            for (let v of field.vertices) {
-                vertex(v.x, v.y);
-            }
-            endShape(CLOSE);
-
-            // Create a clipping mask for the field
-            let fieldMask = createGraphics(width, height);
-            fieldMask.fill(255);
-            fieldMask.noStroke();
-            fieldMask.beginShape();
-            for (let v of field.vertices) {
-                fieldMask.vertex(v.x, v.y);
-            }
-            fieldMask.endShape(CLOSE);
-
-            // Draw bezier curves inside the polygon
-            let curveGraphics = createGraphics(width, height);
-            for (let curve of field.bezierData.curves) {
-                curveGraphics.stroke(255, 0, 0);  // Draw with red color
-                curveGraphics.noFill();
-                curveGraphics.bezier(
-                    curve.start.x, curve.start.y,
-                    curve.control1.x, curve.control1.y,
-                    curve.control2.x, curve.control2.y,
-                    curve.end.x, curve.end.y
-                );
-            }
-
-            // Apply the clipping mask to the curves
-            curveGraphics.loadPixels();
-            fieldMask.loadPixels();
-            for (let i = 0; i < curveGraphics.pixels.length; i += 4) {
-                if (fieldMask.pixels[i] == 0) {
-                    curveGraphics.pixels[i + 3] = 0;  // Set transparency to 0 for areas outside the polygon
-                }
-            }
-            curveGraphics.updatePixels();
-
-            // Draw the bezier curves on the main canvas
-            image(curveGraphics, 0, 0);
-
-            // Draw the outline of the field
-            noFill();
-            stroke(0);
-            strokeWeight(1);
-            beginShape();
-            for (let v of field.vertices) {
-                vertex(v.x, v.y);
-            }
-            endShape(CLOSE);
-
-            pop();
+function isFieldVisible(field) {
+    // 检查field的任何顶点是否在画布内或接近画布
+    let buffer = 300;// 额外的缓冲区，以显示部分可见的fields
+    for (let v of field.vertices) {
+        if (v.x >= -buffer && v.x <= width + buffer && v.y >= -buffer && v.y <= height + buffer) {
+            return true;
         }
+    }
+    return false;
+}
+
+function drawField(field) {
+    push();
+    if (!isFrontView) {
+        // 对于背面视图应用水平翻转
+        translate(width, 0);
+        scale(-1, 1);
+    }
+
+    // 绘制白色填充的多边形
+    fill(255);
+    noStroke();
+    beginShape();
+    for (let v of field.vertices) {
+        vertex(v.x, v.y);
+    }
+    endShape(CLOSE);
+
+    // 创建field的裁剪蒙版
+    let fieldMask = createGraphics(width, height);
+    fieldMask.fill(255);
+    fieldMask.noStroke();
+    fieldMask.beginShape();
+    for (let v of field.vertices) {
+        fieldMask.vertex(v.x, v.y);
+    }
+    fieldMask.endShape(CLOSE);
+
+    // 在多边形内绘制贝塞尔曲线
+    let curveGraphics = createGraphics(width, height);
+    for (let curve of field.bezierData.curves) {
+        curveGraphics.stroke(255, 0, 0);  // 用红色绘制
+        curveGraphics.noFill();
+        curveGraphics.bezier(
+            curve.start.x, curve.start.y,
+            curve.control1.x, curve.control1.y,
+            curve.control2.x, curve.control2.y,
+            curve.end.x, curve.end.y
+        );
+    }
+
+    // 将裁剪蒙版应用到曲线上
+    curveGraphics.loadPixels();
+    fieldMask.loadPixels();
+    for (let i = 0; i < curveGraphics.pixels.length; i += 4) {
+        if (fieldMask.pixels[i] == 0) {
+            curveGraphics.pixels[i + 3] = 0;  // 将多边形外的区域透明度设为0
+        }
+    }
+    curveGraphics.updatePixels();
+
+    // 在主画布上绘制贝塞尔曲线
+    image(curveGraphics, 0, 0);
+
+    // 绘制field的轮廓
+    noFill();
+    stroke(0);
+    strokeWeight(1);
+    beginShape();
+    for (let v of field.vertices) {
+        vertex(v.x, v.y);
+    }
+    endShape(CLOSE);
+
+    pop();
+}
+
     </script>
 </body>
 </html>

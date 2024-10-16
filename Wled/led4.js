@@ -4,30 +4,34 @@ const http = require('http');
 const url = require('url');
 const axios = require('axios');
 
+
+
 const ESP32_IPS = [
-  '192.168.0.118',
-  '192.168.0.174',
-  '192.168.0.151',
-  '192.168.0.142'
+  '192.168.1.50',
+  '192.168.1.51',
+  '192.168.1.52',
+  '192.168.1.53'
 ];
 
 const ESP32_PORT = 21324;
 
 const EFFECTS = {
   'LIGHTNING': 57,
-  'DANCING_SHADOW': 58,
-  'LISS': 59,
+  'DANCING_SHADOW': 112,
+  'LISS': 176,
   'RIPPLE': 79,
   'RAIN': 43,
-  'DRIP': 60,
+  'DRIP': 96,
   'CRAZY_BEES': 119
 };
 
+
+
 const IP_EFFECT_CONFIG = {
-  '192.168.0.118': { effect: EFFECTS.LIGHTNING, defaultSx: 128, defaultIx: 128 },
-  '192.168.0.174': { effect: EFFECTS.CRAZY_BEES, defaultSx: 200, defaultIx: 180 },
-  '192.168.0.151': { effect: EFFECTS.LISS, defaultSx: 150, defaultIx: 150 },
-  '192.168.0.142': { effect: EFFECTS.RAIN, defaultSx: 100, defaultIx: 200 }
+  '192.168.1.50': { effect: EFFECTS.RIPPLE, defaultSx: 128, defaultIx: 128 },
+  '192.168.1.51': { effect: EFFECTS.CRAZY_BEES, defaultSx: 200, defaultIx: 180 },
+  '192.168.1.52': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 100, defaultIx: 200 },
+  '192.168.1.53': { effect: EFFECTS.LISS, defaultSx: 50, defaultIx: 100 }
 };
 
 // 命令队列
@@ -37,7 +41,7 @@ const commandQueues = ESP32_IPS.reduce((acc, ip) => {
 }, {});
 
 const port = new SerialPort({
-  path: '/dev/cu.usbserial-A5069RR4',
+  path: 'COM9',
   baudRate: 9600
 });
 
@@ -93,7 +97,7 @@ function applyMappings(averages) {
 
   return averages.map(x => {
     const normalized = range !== 0 ? (x - minValue) / range : 0;
-    const power = 1.5; // 增加非线性程度
+    const power = 1.2; // 增加非线性程度
     const nonLinear = Math.pow(normalized, power);
     const minOutput = 0.1; // 提高最小输出值
     return minOutput + (1 - minOutput) * nonLinear;
@@ -107,9 +111,10 @@ function normalizeData(mappedData) {
 
   return mappedData.map(value => {
     const normalized = range !== 0 ? ((value - minValue) / range) * 255 : 0;
-    const contrast = 1.5; // 增加对比度
+    const contrast = 1.2; // 增加对比度
     const enhanced = ((normalized / 255 - 0.5) * contrast + 0.5) * 255;
-    return Math.max(30, Math.min(255, Math.round(enhanced))); // 提高最小值到 30
+    // console.log("Enhanced value:", enhanced);
+    return Math.max(30, Math.abs(Math.min(255, Math.round(enhanced)))); // 提高最小值到 30
   });
 }
 

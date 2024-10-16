@@ -37,7 +37,7 @@ const commandQueues = ESP32_IPS.reduce((acc, ip) => {
 }, {});
 
 const port = new SerialPort({
-  path: '/dev/cu.usbserial-A5069RR4',
+  path: 'COM9',
   baudRate: 9600
 });
 
@@ -109,7 +109,7 @@ function normalizeData(mappedData) {
     const normalized = range !== 0 ? ((value - minValue) / range) : 0;
     const contrast = 2.0; // 增加对比度
     const enhanced = Math.pow(normalized, contrast) * 255; // 使用指数函数增强对比
-    return Math.max(0, Math.min(255, Math.round(enhanced))); // 允许更低的最小值
+    return Math.max(100, Math.min(255, Math.round(enhanced))); // 允许更低的最小值
   });
 }
 
@@ -142,10 +142,14 @@ function prepareCommands(normalizedData) {
     // 确保至少有一个颜色通道有显著值
     const maxColor = Math.max(r, g, b);
     if (maxColor < 50) {
-      const factor = 50 / maxColor;
-      r = Math.min(255, Math.round(r * factor));
-      g = Math.min(255, Math.round(g * factor));
-      b = Math.min(255, Math.round(b * factor));
+      if (maxColor === 0) {
+        r = g = b = 50; // 设置一个默认的最低亮度值
+      } else {
+        const factor = 50 / maxColor;
+        r = Math.min(255, Math.round(r * factor));
+        g = Math.min(255, Math.round(g * factor));
+        b = Math.min(255, Math.round(b * factor));
+      }
     }
 
     const brightness = Math.max(30, clamp(normalizedData[baseIndex], 0, 255));

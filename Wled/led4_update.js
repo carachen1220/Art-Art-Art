@@ -20,14 +20,15 @@ const EFFECTS = {
   'RIPPLE': 79,
   'RAIN': 43,
   'DRIP': 96,
-  'CRAZY_BEES': 119
+  'CRAZY_BEES': 119,
+  'SOLAR_LIGHTS': 174
 };
 
 const IP_EFFECT_CONFIG = {
-  '192.168.1.50': { effect: EFFECTS.RIPPLE, defaultSx: 128, defaultIx: 128 },
-  '192.168.1.51': { effect: EFFECTS.CRAZY_BEES, defaultSx: 200, defaultIx: 180 },
-  '192.168.1.52': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 100, defaultIx: 200 },
-  '192.168.1.53': { effect: EFFECTS.LISS, defaultSx: 50, defaultIx: 100 }
+  '192.168.1.50': { effect: EFFECTS.SOLAR_LIGHTS, defaultSx: 128, defaultIx: 128 },
+  '192.168.1.51': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 200, defaultIx: 180 },
+  '192.168.1.52': { effect: EFFECTS.LISS, defaultSx: 45, defaultIx: 180 },
+  '192.168.1.53': { effect: EFFECTS.CRAZY_BEES, defaultSx: 200, defaultIx: 180 }
 };
 
 // 命令队列
@@ -37,7 +38,7 @@ const commandQueues = ESP32_IPS.reduce((acc, ip) => {
 }, {});
 
 const port = new SerialPort({
-  path: 'COM9',
+  path: 'COM6',
   baudRate: 9600
 });
 
@@ -132,7 +133,7 @@ function calculateDuration(normalizedData) {
   } else {
     changeRate = Math.max(...normalizedData) - Math.min(...normalizedData);
   }
-  return Math.round(clamp(changeRate * 20, 200, 2000));
+  return Math.round(clamp(changeRate * 20, 1000, 2000));
 }
 
 function prepareCommands(normalizedData) {
@@ -150,7 +151,8 @@ function prepareCommands(normalizedData) {
       return Math.max(minValue, clamp(Math.round(previous + delta), 0, 255));
     };
 
-    const brightness = calculateDelta(normalizedData[baseIndex], previousData ? previousData[baseIndex] : null);
+      // const brightness = Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255));
+      const brightness = 40+ Math.round(Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255))*180/255);
 
     const r = calculateDelta(normalizedData[baseIndex + 1] * 1.5, previousData ? previousData[baseIndex + 1] * 1.5 : null);
     const g = calculateDelta(normalizedData[baseIndex + 2] * 1.5, previousData ? previousData[baseIndex + 2] * 1.5 : null);

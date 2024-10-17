@@ -28,10 +28,10 @@ const EFFECTS = {
 
 
 const IP_EFFECT_CONFIG = {
-  '192.168.1.50': { effect: EFFECTS.RIPPLE, defaultSx: 128, defaultIx: 128 },
-  '192.168.1.51': { effect: EFFECTS.CRAZY_BEES, defaultSx: 200, defaultIx: 180 },
-  '192.168.1.52': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 100, defaultIx: 200 },
-  '192.168.1.53': { effect: EFFECTS.LISS, defaultSx: 50, defaultIx: 100 }
+  '192.168.1.50': { effect: EFFECTS.DRIP, defaultSx: 128, defaultIx: 128 },
+  '192.168.1.51': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 200, defaultIx: 180 },
+  '192.168.1.52': { effect: EFFECTS.LISS, defaultSx: 100, defaultIx: 200 },
+  '192.168.1.53': { effect: EFFECTS.CRAZY_BEES, defaultSx: 50, defaultIx: 100 }
 };
 
 // 命令队列
@@ -41,7 +41,7 @@ const commandQueues = ESP32_IPS.reduce((acc, ip) => {
 }, {});
 
 const port = new SerialPort({
-  path: 'COM9',
+  path: 'COM6',
   baudRate: 9600
 });
 
@@ -135,7 +135,8 @@ function prepareCommands(normalizedData) {
     const config = IP_EFFECT_CONFIG[ip];
     const minValue = 30; // 提高最小值
 
-    const brightness = Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255));
+    // const brightness = Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255));
+    const brightness = 40+ Math.round(Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255))*180/255);
 
     const r = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 1] * 1.5), 0, 255));
     const g = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 2] * 1.5), 0, 255));

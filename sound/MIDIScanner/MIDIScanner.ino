@@ -308,24 +308,7 @@ void loop() {
         }
 
   }
-  Serial.print("\n"); // debugging without lcd display
-
-
-  // midiAllNotesOff(0);
-
-  // MIDI loop end
-
-  // for (uint8_t i=0; i<CHANNELS; i++) {
-  //   midiNoteOff(0, i, 127);
-  // }
-  
-  // delay(1000);
-
-
-
-
-
-
+  // Serial.print("\n"); // debugging without lcd display
 
 
 

@@ -1,49 +1,56 @@
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
-const dgram = require('dgram');
-const udpClient = dgram.createSocket('udp4');
+const http = require('http');
+const url = require('url');
+const axios = require('axios');
 
-// Set ESP32 IP address and UDP port
-const ESP32_IP = '192.168.0.118';  //to be determined
-const ESP32_PORT = 21324;  // should be the same as the receiver(ESP-32)
 
-// set port for arduino
+// the IP addresses of each ESP32 board
+const ESP32_IPS = [
+  '192.168.1.50',
+  '192.168.1.51',
+  '192.168.1.52',
+  '192.168.1.53'
+];
+
+const ESP32_PORT = 21324;
+
+const EFFECTS = {
+  'LIGHTNING': 57,
+  'DANCING_SHADOW': 112,
+  'LISS': 176,
+  'RIPPLE': 79,
+  'RAIN': 43,
+  'DRIP': 96,
+  'CRAZY_BEES': 119
+};
+
+
+
+const IP_EFFECT_CONFIG = {
+  '192.168.1.50': { effect: EFFECTS.DRIP, defaultSx: 128, defaultIx: 128 },
+  '192.168.1.51': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 200, defaultIx: 180 },
+  '192.168.1.52': { effect: EFFECTS.LISS, defaultSx: 100, defaultIx: 200 },
+  '192.168.1.53': { effect: EFFECTS.CRAZY_BEES, defaultSx: 50, defaultIx: 100 }
+};
+
+// command queue
+const commandQueues = ESP32_IPS.reduce((acc, ip) => {
+  acc[ip] = [];
+  return acc;
+}, {});
+
 const port = new SerialPort({
-  // set your port
-  path: '/dev/cu.usbserial-A5069RR4',
+  path: 'COM6',
   baudRate: 9600
 });
 
-// set parser
 const arduinoParser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
-
-// Set up the serial port for VS1053
-// const vs1053Port = new SerialPort({
-//   path: 'COM5',  // Set the appropriate port for VS1053
-//   baudRate: 31250 // MIDI uses 31250 baud rate
-// });
-
-// WebSocket server
-const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
 
 arduinoParser.on('data', (data) => {
   const parsedData = parseArduinoData(data);
-  // this part is sending data through websocket
-  // wss.clients.forEach((client) => {
-  //   if (client.readyState === WebSocket.OPEN) {
-  //     client.send(JSON.stringify(parsedData));    }
-  // });
-  sendToESP32(parsedData);
+  sendToESP32s(parsedData);
 });
-
-wss.on('connection', (ws) => {
-  console.log('Client connected');
-});
-
-console.log('WebSocket server is running on ws://localhost:8080');
-
-
 
 function parseArduinoData(data) {
   const result = { channels: [] };
@@ -61,82 +68,168 @@ function parseArduinoData(data) {
   return result;
 }
 
-// Send parsed data to ESP32 using UDP
-// function sendToESP32(parsedData) {
-//   const message = JSON.stringify(parsedData);
-
-//   // Send the message via UDP to the ESP32
-//   udpClient.send(message, ESP32_PORT, ESP32_IP, (err) => {
-//     if (err) {
-//       console.error(`Error sending UDP message: ${err}`);
-//     } else {
-//       console.log(`Message sent to ESP32: ${message}`);
-//     }
-//   });
-// }
-
-
-
-function sendToESP32(parsedData) {
-  // ensure there're 128 channels' strength
+function sendToESP32s(parsedData) {
   if (parsedData.channels.length < 128) {
     console.error('Not enough channel data');
     return;
   }
 
-  // calculate average value of 8 average channels
   let averages = [];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 24; i++) {
     let sum = 0;
-    for (let j = 0; j < 16; j++) {
-      sum += parsedData.channels[i * 16 + j];
+    for (let j = 0; j < 5; j++) {
+      sum += parsedData.channels[i * 5 + j] || 0;
     }
-    averages[i] = sum / 16;
+    averages[i] = sum / 5;
   }
 
-  // normalization
-  function normalize(value, min, max) {
-    return Math.floor((value - min) / (max - min) * 255);
-  }
+  const mappedData = applyMappings(averages);
+  const normalizedData = normalizeData(mappedData);
+  const commands = prepareCommands(normalizedData);
 
-  // find the max and the min of the strength
-  const minAvg = Math.min(...averages);
-  const maxAvg = Math.max(...averages);
+  queueCommands(commands);
+}
 
-  // normalization
-  const normalizedAverages = averages.map(avg => normalize(avg, minAvg, maxAvg));
+function applyMappings(averages) {
+  const minValue = Math.min(...averages);
+  const maxValue = Math.max(...averages);
+  const range = maxValue - minValue;
 
+  return averages.map(x => {
+    const normalized = range !== 0 ? (x - minValue) / range : 0;
+    const power = 1.2; 
+    const nonLinear = Math.pow(normalized, power);
+    const minOutput = 0.1; 
+    return minOutput + (1 - minOutput) * nonLinear;
+  });
+}
 
-  const command = {
-    on: true,
-    bri: normalizedAverages[0], // brightness
-    seg: [
-      {
-        col: [
-          [
-            normalizedAverages[1], // R
-            normalizedAverages[2], // G
-            normalizedAverages[3]  // B
-          ]
-        ],
-        fx: Math.min(255, normalizedAverages[4]),  // effect
-        sx: normalizedAverages[5],  // effect speed
-        ix: normalizedAverages[6]   // effect strength
+function normalizeData(mappedData) {
+  const minValue = Math.min(...mappedData);
+  const maxValue = Math.max(...mappedData);
+  const range = maxValue - minValue;
+
+  return mappedData.map(value => {
+    const normalized = range !== 0 ? ((value - minValue) / range) * 255 : 0;
+    const contrast = 1.2; 
+    const enhanced = ((normalized / 255 - 0.5) * contrast + 0.5) * 255;
+    // console.log("Enhanced value:", enhanced);
+    return Math.max(30, Math.abs(Math.min(255, Math.round(enhanced)))); 
+  });
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function calculateDuration(normalizedData) {
+  const changeRate = Math.max(...normalizedData) - Math.min(...normalizedData);
+  return Math.round(clamp(changeRate * 10, 200, 2000));
+}
+
+function prepareCommands(normalizedData) {
+  const duration = calculateDuration(normalizedData);
+
+  return ESP32_IPS.map((ip, index) => {
+    const baseIndex = index * 6;
+    const config = IP_EFFECT_CONFIG[ip];
+    const minValue = 30; 
+
+    // const brightness = Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255));
+    const brightness = 40+ Math.round(Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255))*180/255);
+
+    const r = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 1] * 1.5), 0, 255));
+    const g = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 2] * 1.5), 0, 255));
+    const b = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 3] * 1.5), 0, 255));
+
+   
+    const sxInput = normalizedData[baseIndex + 4];
+    const ixInput = normalizedData[baseIndex + 5];
+    const sx = Math.max(minValue, clamp(Math.round(config.defaultSx * (0.5 + sxInput / 510)), 0, 255));
+    const ix = Math.max(minValue, clamp(Math.round(config.defaultIx * (0.5 + ixInput / 510)), 0, 255));
+
+    return {
+      ip: ip,
+      command: {
+        on: true,
+        bri: brightness,
+        tt: duration,
+        seg: [
+          {
+            col: [[r, g, b]],
+            fx: config.effect,
+            sx: sx,
+            ix: ix
+          }
+        ]
       }
-    ]
-  };
+    };
+  });
+}
 
-
-
-  // convert the command to JSON string
-  const message = JSON.stringify(command);
-
-  // send to ESP 32
-  udpClient.send(message, ESP32_PORT, ESP32_IP, (err) => {
-    if (err) {
-      console.error(`Error sending UDP message: ${err}`);
-    } else {
-      console.log(`Command sent to ESP32: ${message}`);
+function queueCommands(commands) {
+  commands.forEach(command => {
+    commandQueues[command.ip].push(command);
+    if (commandQueues[command.ip].length === 1) {
+      sendNextCommand(command.ip);
     }
   });
 }
+
+async function sendNextCommand(ip) {
+  if (commandQueues[ip].length === 0) return;
+
+  const command = commandQueues[ip][0];
+  const url = `http://${ip}/json/state`;
+
+  try {
+    const response = await axios.post(url, command.command);
+    console.log(`Command sent to LED panel (${ip}):`, JSON.stringify(command.command));
+    console.log(`Response: ${response.status} ${response.statusText}`);
+
+    const nextCommandDelay = command.command.tt * 7.5;
+    setTimeout(() => {
+      commandQueues[ip].shift();
+      sendNextCommand(ip);
+    }, nextCommandDelay);
+  } catch (error) {
+    console.error(`Error sending HTTP request to LED panel (${ip}):`, error.message);
+    commandQueues[ip].shift();
+    sendNextCommand(ip);
+  }
+}
+
+const server = http.createServer((req, res) => {
+  const parsedUrl = url.parse(req.url, true);
+
+  if (parsedUrl.pathname === '/control') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        const command = JSON.parse(body);
+        if (command.ip && command.command) {
+          queueCommands([{ ip: command.ip, command: command.command }]);
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.end('Command queued successfully');
+        } else {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('Invalid command format');
+        }
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Invalid JSON');
+      }
+    });
+  } else {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+});
+
+const HTTP_PORT = 3000;
+server.listen(HTTP_PORT, () => {
+  console.log(`HTTP server running on port ${HTTP_PORT}`);
+});

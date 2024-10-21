@@ -54,3 +54,15 @@
    ```bash
    node ./server.js
    ```
+### Step 7: Additional Operation
+- Ensure the `ws` and `serialport` library have been install. If Step 6 results in an error, try:  
+   ```bash
+   npm install ws
+   ```
+   and 
+   ```bash
+   npm install serialport
+   ```
+### Step 6: Kill the Program
+-  Press `Ctrl + C` to end the server:
+   

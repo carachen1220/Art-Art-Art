@@ -7,8 +7,8 @@
 #include "Arduino.h"
 #include "ssdfont.h"
 
-#define SSD1106 // comment out one or other of these lines so as to leave the definition active for the type of display driver you have
-//#define SSD1306 // comment out one or other of these lines so as to leave the definition active for the type of display driver you have
+// #define SSD1106 // comment out one or other of these lines so as to leave the definition active for the type of display driver you have
+#define SSD1306 // comment out one or other of these lines so as to leave the definition active for the type of display driver you have
 
 #define SSD1X06_I2C_ADDRESS 0x3C // some modules can be 0x3D - depends on how module's internal SA0 has been wired
 

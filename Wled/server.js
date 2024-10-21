@@ -22,16 +22,17 @@ const EFFECTS = {
   'RIPPLE': 79,
   'RAIN': 43,
   'DRIP': 96,
-  'CRAZY_BEES': 119
+  'CRAZY_BEES': 119,
+  'POLAR_LIGHTS':174
 };
 
 
 
 const IP_EFFECT_CONFIG = {
-  '192.168.1.50': { effect: EFFECTS.DRIP, defaultSx: 128, defaultIx: 128 },
-  '192.168.1.51': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 200, defaultIx: 180 },
+  '192.168.1.50': { effect: EFFECTS.POLAR_LIGHTS, defaultSx: 128, defaultIx: 128 },
+  '192.168.1.51': { effect: EFFECTS.DANCING_SHADOW, defaultSx: 128, defaultIx: 180 },
   '192.168.1.52': { effect: EFFECTS.LISS, defaultSx: 100, defaultIx: 200 },
-  '192.168.1.53': { effect: EFFECTS.CRAZY_BEES, defaultSx: 50, defaultIx: 100 }
+  '192.168.1.53': { effect: EFFECTS.CRAZY_BEES, defaultSx: 100, defaultIx: 100 }
 };
 
 // command queue
@@ -111,7 +112,7 @@ function normalizeData(mappedData) {
 
   return mappedData.map(value => {
     const normalized = range !== 0 ? ((value - minValue) / range) * 255 : 0;
-    const contrast = 1.2; 
+    const contrast = 1.5; 
     const enhanced = ((normalized / 255 - 0.5) * contrast + 0.5) * 255;
     // console.log("Enhanced value:", enhanced);
     return Math.max(30, Math.abs(Math.min(255, Math.round(enhanced)))); 
@@ -138,15 +139,15 @@ function prepareCommands(normalizedData) {
     // const brightness = Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255));
     const brightness = 40+ Math.round(Math.max(minValue, clamp(normalizedData[baseIndex], 0, 255))*180/255);
 
-    const r = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 1] * 1.5), 0, 255));
-    const g = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 2] * 1.5), 0, 255));
-    const b = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 3] * 1.5), 0, 255));
+    const r = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 1] * 2.5), 0, 255));
+    const g = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 2] * 2.5), 0, 255));
+    const b = Math.max(minValue, clamp(Math.round(normalizedData[baseIndex + 3] * 2.5), 0, 255));
 
    
     const sxInput = normalizedData[baseIndex + 4];
     const ixInput = normalizedData[baseIndex + 5];
-    const sx = Math.max(minValue, clamp(Math.round(config.defaultSx * (0.5 + sxInput / 510)), 0, 255));
-    const ix = Math.max(minValue, clamp(Math.round(config.defaultIx * (0.5 + ixInput / 510)), 0, 255));
+    const sx = Math.max(minValue, clamp(Math.round(config.defaultSx * (0.5 + sxInput / 255)), 0, 255));
+    const ix = Math.max(minValue, clamp(Math.round(config.defaultIx * (0.5 + ixInput / 255)), 0, 255));
 
     return {
       ip: ip,
